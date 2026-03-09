@@ -173,51 +173,36 @@ export async function scrapeUrl(url: string): Promise<ScrapeResult> {
   let caption = "";
   let images: string[] = [];
   let author = "";
-  const isShareUrl = url.includes("/share/") || url.includes("fb.com/");
 
-  // For Facebook share/short URLs, skip oEmbed (doesn't work with share links)
-  // and go straight to HTML scraping — axios GET follows redirects automatically,
-  // and the crawler UA gets og: tags from the final page.
-  if (platform === "facebook" && isShareUrl) {
+  // Try platform-specific oEmbed first (API calls, not blocked by Vercel IPs)
+  if (platform === "instagram") {
+    const oembed = await tryInstagramOEmbed(url);
+    if (oembed) {
+      caption = oembed.caption;
+      author = oembed.author;
+      if (oembed.thumbnailUrl) {
+        images.push(oembed.thumbnailUrl);
+      }
+    }
+  } else if (platform === "facebook") {
+    const oembed = await tryFacebookOEmbed(url);
+    if (oembed) {
+      caption = oembed.caption;
+      author = oembed.author;
+    }
+  }
+
+  // Fallback to HTML scraping if oEmbed didn't get content
+  if (!caption) {
     try {
       const scraped = await scrapeHtml(url, platform);
-      caption = scraped.caption;
-      author = scraped.author;
-      images = scraped.images;
+      caption = caption || scraped.caption;
+      author = author || scraped.author;
+      if (scraped.images.length > 0 && images.length === 0) {
+        images = scraped.images;
+      }
     } catch {
-      // HTML scraping failed
-    }
-  } else {
-    // Try platform-specific oEmbed first (more reliable for direct post URLs)
-    if (platform === "instagram") {
-      const oembed = await tryInstagramOEmbed(url);
-      if (oembed) {
-        caption = oembed.caption;
-        author = oembed.author;
-        if (oembed.thumbnailUrl) {
-          images.push(oembed.thumbnailUrl);
-        }
-      }
-    } else if (platform === "facebook") {
-      const oembed = await tryFacebookOEmbed(url);
-      if (oembed) {
-        caption = oembed.caption;
-        author = oembed.author;
-      }
-    }
-
-    // Fallback to HTML scraping if oEmbed didn't get caption
-    if (!caption) {
-      try {
-        const scraped = await scrapeHtml(url, platform);
-        caption = caption || scraped.caption;
-        author = author || scraped.author;
-        if (scraped.images.length > 0 && images.length === 0) {
-          images = scraped.images;
-        }
-      } catch {
-        // HTML scraping failed too
-      }
+      // HTML scraping failed too
     }
   }
 
