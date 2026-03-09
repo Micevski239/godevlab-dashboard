@@ -14,23 +14,6 @@ function detectPlatform(url: string): "instagram" | "facebook" | "unknown" {
   return "unknown";
 }
 
-/**
- * Resolve Facebook share/short URLs to their canonical form by following redirects.
- */
-async function resolveRedirects(url: string): Promise<string> {
-  try {
-    const response = await axios.head(url, {
-      maxRedirects: 5,
-      timeout: 10000,
-      headers: { "User-Agent": BROWSER_UA },
-    });
-    // axios follows redirects automatically, final URL is in response.request.res.responseUrl
-    const finalUrl = response.request?.res?.responseUrl || response.request?.responseURL || url;
-    return finalUrl;
-  } catch {
-    return url;
-  }
-}
 
 /**
  * Try Instagram's oEmbed endpoint first — this is a public API that
@@ -146,41 +129,51 @@ export async function scrapeUrl(url: string): Promise<ScrapeResult> {
   let caption = "";
   let images: string[] = [];
   let author = "";
+  const isShareUrl = url.includes("/share/") || url.includes("fb.com/");
 
-  // Resolve share/short URLs to canonical form (important for Facebook /share/p/ links)
-  if (platform === "facebook" && (url.includes("/share/") || url.includes("fb.com"))) {
-    url = await resolveRedirects(url);
-  }
-
-  // Try platform-specific oEmbed first (more reliable)
-  if (platform === "instagram") {
-    const oembed = await tryInstagramOEmbed(url);
-    if (oembed) {
-      caption = oembed.caption;
-      author = oembed.author;
-      if (oembed.thumbnailUrl) {
-        images.push(oembed.thumbnailUrl);
-      }
-    }
-  } else if (platform === "facebook") {
-    const oembed = await tryFacebookOEmbed(url);
-    if (oembed) {
-      caption = oembed.caption;
-      author = oembed.author;
-    }
-  }
-
-  // Fallback to HTML scraping if oEmbed didn't get caption
-  if (!caption) {
+  // For Facebook share/short URLs, skip oEmbed (doesn't work with share links)
+  // and go straight to HTML scraping — axios GET follows redirects automatically,
+  // and the crawler UA gets og: tags from the final page.
+  if (platform === "facebook" && isShareUrl) {
     try {
       const scraped = await scrapeHtml(url, platform);
-      caption = caption || scraped.caption;
-      author = author || scraped.author;
-      if (scraped.images.length > 0 && images.length === 0) {
-        images = scraped.images;
-      }
+      caption = scraped.caption;
+      author = scraped.author;
+      images = scraped.images;
     } catch {
-      // HTML scraping failed too
+      // HTML scraping failed
+    }
+  } else {
+    // Try platform-specific oEmbed first (more reliable for direct post URLs)
+    if (platform === "instagram") {
+      const oembed = await tryInstagramOEmbed(url);
+      if (oembed) {
+        caption = oembed.caption;
+        author = oembed.author;
+        if (oembed.thumbnailUrl) {
+          images.push(oembed.thumbnailUrl);
+        }
+      }
+    } else if (platform === "facebook") {
+      const oembed = await tryFacebookOEmbed(url);
+      if (oembed) {
+        caption = oembed.caption;
+        author = oembed.author;
+      }
+    }
+
+    // Fallback to HTML scraping if oEmbed didn't get caption
+    if (!caption) {
+      try {
+        const scraped = await scrapeHtml(url, platform);
+        caption = caption || scraped.caption;
+        author = author || scraped.author;
+        if (scraped.images.length > 0 && images.length === 0) {
+          images = scraped.images;
+        }
+      } catch {
+        // HTML scraping failed too
+      }
     }
   }
 
