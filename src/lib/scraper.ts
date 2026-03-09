@@ -79,14 +79,9 @@ async function tryFacebookOEmbed(url: string): Promise<{ caption: string; author
 }
 
 /**
- * Scrape HTML using a crawler User-Agent. Facebook serves og: meta tags
- * to recognized crawlers (like facebookexternalhit, Twitterbot, etc.)
- * while blocking regular browser scraping with a login wall.
+ * Fetch and parse HTML from a URL, returning og: content and the canonical URL if present.
  */
-async function scrapeHtml(url: string, platform: string): Promise<{ caption: string; images: string[]; author: string }> {
-  // Use crawler UA for Facebook (they serve og: tags to crawlers), browser UA for others
-  const userAgent = platform === "facebook" ? CRAWLER_UA : BROWSER_UA;
-
+async function fetchAndParse(url: string, userAgent: string) {
   const { data: html } = await axios.get(url, {
     headers: {
       "User-Agent": userAgent,
@@ -100,10 +95,9 @@ async function scrapeHtml(url: string, platform: string): Promise<{ caption: str
 
   const $ = cheerio.load(html);
 
-  const caption =
+  let caption =
     $('meta[property="og:description"]').attr("content") ||
     $('meta[name="description"]').attr("content") ||
-    $('meta[property="og:title"]').attr("content") ||
     "";
 
   const images: string[] = [];
@@ -116,12 +110,62 @@ async function scrapeHtml(url: string, platform: string): Promise<{ caption: str
     if (src && !images.includes(src) && !src.includes("safe_image.php")) images.push(src);
   });
 
+  // Use og:title for author (page name), not as caption fallback
   const author =
     $('meta[property="og:site_name"]').attr("content") ||
     $('meta[property="og:title"]').attr("content")?.split("|")[0]?.trim() ||
     "";
 
-  return { caption, images, author };
+  // Extract canonical URL — Facebook share pages often include this even
+  // when they don't return the full og: content
+  const canonicalUrl =
+    $('meta[property="og:url"]').attr("content") ||
+    $('link[rel="canonical"]').attr("href") ||
+    $('meta[http-equiv="refresh"]').attr("content")?.match(/url=(.+)/i)?.[1] ||
+    "";
+
+  // Facebook text-only posts have no og:description, but the post text
+  // is embedded in the og:url as a hyphenated slug between /posts/ and /id/
+  // e.g. /posts/оглас-за-вработување-во-глорион/122157100832714265/
+  if (!caption && canonicalUrl.includes("/posts/")) {
+    const slugMatch = canonicalUrl.match(/\/posts\/([^/]+)\/\d+/);
+    if (slugMatch) {
+      const decoded = decodeURIComponent(slugMatch[1]).replace(/-/g, " ");
+      // Only use if it's actual text (not just numbers/IDs)
+      if (decoded.length > 5 && !/^\d+$/.test(decoded.trim())) {
+        caption = decoded;
+      }
+    }
+  }
+
+  return { caption, images, author, canonicalUrl };
+}
+
+/**
+ * Scrape HTML using a crawler User-Agent. Facebook serves og: meta tags
+ * to recognized crawlers (like facebookexternalhit, Twitterbot, etc.)
+ * while blocking regular browser scraping with a login wall.
+ *
+ * For share/short URLs that redirect via JS, extracts the canonical URL
+ * and retries with it.
+ */
+async function scrapeHtml(url: string, platform: string): Promise<{ caption: string; images: string[]; author: string }> {
+  const userAgent = platform === "facebook" ? CRAWLER_UA : BROWSER_UA;
+
+  const result = await fetchAndParse(url, userAgent);
+
+  // If we got content, return it
+  if (result.caption || result.images.length > 0) {
+    return result;
+  }
+
+  // No content but we found a canonical URL — retry with it (handles share/short URLs)
+  if (result.canonicalUrl && result.canonicalUrl !== url && result.canonicalUrl.includes("facebook.com")) {
+    const retry = await fetchAndParse(result.canonicalUrl, userAgent);
+    return retry;
+  }
+
+  return result;
 }
 
 export async function scrapeUrl(url: string): Promise<ScrapeResult> {
