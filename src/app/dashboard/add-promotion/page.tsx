@@ -17,7 +17,7 @@ import {
   MapPin,
   X,
 } from "lucide-react";
-import UrlInput from "@/components/UrlInput";
+import ContentInput from "@/components/ContentInput";
 import StatusIndicator from "@/components/StatusIndicator";
 import PromotionPreview from "@/components/PromotionPreview";
 import CopyField from "@/components/CopyField";
@@ -339,6 +339,59 @@ export default function AddPromotionPage() {
     }
   }, []);
 
+  const processFromManual = useCallback(async (text: string, images: File[]) => {
+    setStep("processing");
+    setError(undefined);
+
+    try {
+      const processRes = await fetch("/api/process-promotion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caption: text,
+          images: [],
+          platform: "manual",
+          sourceUrl: "",
+        }),
+      });
+
+      if (!processRes.ok) {
+        const processData = await processRes.json();
+        throw new Error(processData.error);
+      }
+
+      const content: PromotionContent = await processRes.json();
+      setPromoContent(content);
+
+      if (images.length > 0) {
+        setIsCompressing(true);
+        try {
+          const formData = new FormData();
+          images.forEach((f) => formData.append("images", f));
+          const res = await fetch("/api/compress", {
+            method: "POST",
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setCompressedImages(data.images || []);
+          }
+        } catch {
+          // silent fail
+        } finally {
+          setIsCompressing(false);
+        }
+      } else {
+        setImageNote("No images provided. Please upload images manually.");
+      }
+
+      setStep("done");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+      setStep("error");
+    }
+  }, []);
+
   const copyAllFields = async () => {
     if (!promoContent) return;
 
@@ -464,12 +517,16 @@ export default function AddPromotionPage() {
                 Extract Promotion Content
               </h2>
               <p className="text-gray-500">
-                Paste a social media URL to automatically extract, translate, and
-                optimize promotion content.
+                Paste a social media URL or manually enter post text to
+                automatically translate and optimize promotion content.
               </p>
             </div>
 
-            <UrlInput onSubmit={processFromUrl} disabled={isProcessing} />
+            <ContentInput
+              onSubmitUrl={processFromUrl}
+              onSubmitManual={processFromManual}
+              disabled={isProcessing}
+            />
           </div>
         )}
 
