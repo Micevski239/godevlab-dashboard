@@ -18,6 +18,21 @@ function detectPlatformIcon(url: string) {
   return Link;
 }
 
+/**
+ * Extract the post URL from a Facebook embed iframe code.
+ * e.g. <iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2F...">
+ */
+function extractUrlFromEmbed(input: string): string | null {
+  const hrefMatch = input.match(/href=([^&"]+)/);
+  if (hrefMatch) {
+    try {
+      const decoded = decodeURIComponent(hrefMatch[1]);
+      if (decoded.includes("facebook.com")) return decoded;
+    } catch { /* ignore */ }
+  }
+  return null;
+}
+
 type Mode = "url" | "manual";
 
 export default function ContentInput({
@@ -49,6 +64,18 @@ export default function ContentInput({
   })();
 
   const PlatformIcon = url ? detectPlatformIcon(url) : Globe;
+
+  const handleUrlChange = (value: string) => {
+    // If user pastes an embed iframe, extract the URL from it
+    if (value.includes("<iframe") && value.includes("facebook.com")) {
+      const extracted = extractUrlFromEmbed(value);
+      if (extracted) {
+        setUrl(extracted);
+        return;
+      }
+    }
+    setUrl(value);
+  };
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,10 +135,10 @@ export default function ContentInput({
             <div className="flex items-center gap-3 bg-white border-2 border-gray-200 rounded-xl px-4 py-3 focus-within:border-brand-700 transition-colors shadow-sm">
               <PlatformIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
               <input
-                type="url"
+                type="text"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Paste Instagram or Facebook post URL..."
+                onChange={(e) => handleUrlChange(e.target.value)}
+                placeholder="Paste a URL or Facebook embed code..."
                 className="flex-1 outline-none text-gray-900 placeholder:text-gray-400 bg-transparent"
                 disabled={disabled}
               />
