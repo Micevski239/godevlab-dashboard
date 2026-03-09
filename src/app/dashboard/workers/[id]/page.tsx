@@ -21,6 +21,32 @@ import {
   endOfMonth,
   differenceInMinutes,
 } from "date-fns";
+import type { TimeEntry } from "@/types";
+
+/** Group time entries by date and compute daily totals */
+function groupByDay(entries: TimeEntry[]) {
+  const map = new Map<string, { entries: TimeEntry[]; totalMinutes: number }>();
+
+  for (const entry of entries) {
+    const dateKey = format(new Date(entry.clock_in), "yyyy-MM-dd");
+    if (!map.has(dateKey)) map.set(dateKey, { entries: [], totalMinutes: 0 });
+    const day = map.get(dateKey)!;
+    day.entries.push(entry);
+    const mins = differenceInMinutes(
+      entry.clock_out ? new Date(entry.clock_out) : new Date(),
+      new Date(entry.clock_in)
+    );
+    day.totalMinutes += mins;
+  }
+
+  return Array.from(map.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([date, { entries: dayEntries, totalMinutes }]) => ({
+      date,
+      entries: dayEntries,
+      totalMinutes,
+    }));
+}
 
 export default function WorkerDetailPage({
   params,
@@ -133,45 +159,61 @@ export default function WorkerDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent Time Entries</CardTitle>
+          <CardTitle className="text-base">Daily Work Time</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {monthEntries.slice(0, 20).map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center justify-between text-sm py-2 border-b last:border-0"
-              >
-                <div>
-                  <span className="font-medium">
-                    {format(new Date(entry.clock_in), "EEE, MMM d")}
-                  </span>
-                  <span className="text-muted-foreground ml-2">
-                    {format(new Date(entry.clock_in), "HH:mm")}
-                    {" \u2014 "}
-                    {entry.clock_out
-                      ? format(new Date(entry.clock_out), "HH:mm")
-                      : "now"}
-                  </span>
-                </div>
-                <span className="font-mono text-muted-foreground">
-                  {entry.clock_out
-                    ? `${(
-                        differenceInMinutes(
-                          new Date(entry.clock_out),
-                          new Date(entry.clock_in)
-                        ) / 60
-                      ).toFixed(1)}h`
-                    : "active"}
-                </span>
-              </div>
-            ))}
-            {monthEntries.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No entries this month.
-              </p>
-            )}
-          </div>
+        <CardContent className="p-0">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-muted-foreground">
+                <th className="text-left font-medium px-6 py-3">Date</th>
+                <th className="text-left font-medium px-6 py-3">Sessions</th>
+                <th className="text-right font-medium px-6 py-3">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupByDay(monthEntries).map((day) => (
+                <tr key={day.date} className="border-b last:border-0">
+                  <td className="px-6 py-3 font-medium whitespace-nowrap">
+                    {format(new Date(day.date), "EEE, MMM d")}
+                  </td>
+                  <td className="px-6 py-3">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      {day.entries.map((entry) => (
+                        <span
+                          key={entry.id}
+                          className="text-muted-foreground whitespace-nowrap"
+                        >
+                          {format(new Date(entry.clock_in), "HH:mm")}
+                          {" \u2014 "}
+                          {entry.clock_out ? (
+                            format(new Date(entry.clock_out), "HH:mm")
+                          ) : (
+                            <span className="text-green-600 font-medium">
+                              now
+                            </span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-3 text-right font-mono font-medium whitespace-nowrap">
+                    {Math.floor(day.totalMinutes / 60)}h{" "}
+                    {(day.totalMinutes % 60).toString().padStart(2, "0")}m
+                  </td>
+                </tr>
+              ))}
+              {monthEntries.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="px-6 py-8 text-center text-muted-foreground"
+                  >
+                    No entries this month.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </CardContent>
       </Card>
     </div>
