@@ -2,10 +2,34 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import type { ScrapeResult } from "@/types";
 
+const BROWSER_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+// Facebook serves og: meta tags to known crawler User-Agents
+const CRAWLER_UA = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)";
+
 function detectPlatform(url: string): "instagram" | "facebook" | "unknown" {
   if (url.includes("instagram.com")) return "instagram";
   if (url.includes("facebook.com") || url.includes("fb.com")) return "facebook";
   return "unknown";
+}
+
+/**
+ * Resolve Facebook share/short URLs to their canonical form by following redirects.
+ */
+async function resolveRedirects(url: string): Promise<string> {
+  try {
+    const response = await axios.head(url, {
+      maxRedirects: 5,
+      timeout: 10000,
+      headers: { "User-Agent": BROWSER_UA },
+    });
+    // axios follows redirects automatically, final URL is in response.request.res.responseUrl
+    const finalUrl = response.request?.res?.responseUrl || response.request?.responseURL || url;
+    return finalUrl;
+  } catch {
+    return url;
+  }
 }
 
 /**
@@ -18,10 +42,7 @@ async function tryInstagramOEmbed(url: string): Promise<{ caption: string; thumb
     const oembedUrl = `https://www.instagram.com/api/v1/oembed/?url=${encodeURIComponent(url)}`;
     const { data } = await axios.get(oembedUrl, {
       timeout: 10000,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
+      headers: { "User-Agent": BROWSER_UA },
     });
     return {
       caption: data.title || "",
@@ -34,19 +55,35 @@ async function tryInstagramOEmbed(url: string): Promise<{ caption: string; thumb
 }
 
 /**
- * Try Facebook's oEmbed endpoint.
+ * Try Facebook's Graph API oEmbed endpoint (requires app access token).
+ * Falls back to the legacy plugin endpoint if no token is configured.
  */
 async function tryFacebookOEmbed(url: string): Promise<{ caption: string; author: string } | null> {
+  const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
+
+  // Try Graph API oEmbed if access token is available
+  if (accessToken) {
+    try {
+      const oembedUrl = `https://graph.facebook.com/v21.0/oembed_post?url=${encodeURIComponent(url)}&access_token=${accessToken}`;
+      const { data } = await axios.get(oembedUrl, { timeout: 10000 });
+      const $ = cheerio.load(data.html || "");
+      const text = $.text().trim();
+      return {
+        caption: text || data.title || "",
+        author: data.author_name || "",
+      };
+    } catch {
+      // Fall through to legacy endpoint
+    }
+  }
+
+  // Legacy plugin endpoint (may not work without auth)
   try {
     const oembedUrl = `https://www.facebook.com/plugins/post/oembed.json/?url=${encodeURIComponent(url)}`;
     const { data } = await axios.get(oembedUrl, {
       timeout: 10000,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
+      headers: { "User-Agent": BROWSER_UA },
     });
-    // Facebook oEmbed returns HTML — extract text from it
     const $ = cheerio.load(data.html || "");
     const text = $.text().trim();
     return {
@@ -59,13 +96,17 @@ async function tryFacebookOEmbed(url: string): Promise<{ caption: string; author
 }
 
 /**
- * Fallback: scrape the HTML directly for og: meta tags.
+ * Scrape HTML using a crawler User-Agent. Facebook serves og: meta tags
+ * to recognized crawlers (like facebookexternalhit, Twitterbot, etc.)
+ * while blocking regular browser scraping with a login wall.
  */
-async function scrapeHtml(url: string): Promise<{ caption: string; images: string[]; author: string }> {
+async function scrapeHtml(url: string, platform: string): Promise<{ caption: string; images: string[]; author: string }> {
+  // Use crawler UA for Facebook (they serve og: tags to crawlers), browser UA for others
+  const userAgent = platform === "facebook" ? CRAWLER_UA : BROWSER_UA;
+
   const { data: html } = await axios.get(url, {
     headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "User-Agent": userAgent,
       Accept:
         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.5",
@@ -106,6 +147,11 @@ export async function scrapeUrl(url: string): Promise<ScrapeResult> {
   let images: string[] = [];
   let author = "";
 
+  // Resolve share/short URLs to canonical form (important for Facebook /share/p/ links)
+  if (platform === "facebook" && (url.includes("/share/") || url.includes("fb.com"))) {
+    url = await resolveRedirects(url);
+  }
+
   // Try platform-specific oEmbed first (more reliable)
   if (platform === "instagram") {
     const oembed = await tryInstagramOEmbed(url);
@@ -127,7 +173,7 @@ export async function scrapeUrl(url: string): Promise<ScrapeResult> {
   // Fallback to HTML scraping if oEmbed didn't get caption
   if (!caption) {
     try {
-      const scraped = await scrapeHtml(url);
+      const scraped = await scrapeHtml(url, platform);
       caption = caption || scraped.caption;
       author = author || scraped.author;
       if (scraped.images.length > 0 && images.length === 0) {
@@ -144,8 +190,6 @@ export async function scrapeUrl(url: string): Promise<ScrapeResult> {
     );
   }
 
-  // Note: images from scraping are usually low quality thumbnails.
-  // The UI should encourage uploading full-resolution images manually.
   return {
     caption,
     images,
