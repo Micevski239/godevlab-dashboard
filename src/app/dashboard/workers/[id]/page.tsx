@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   getEmployee,
   getTimeEntriesForEmployee,
+  getAllTimeEntriesForEmployee,
 } from "@/lib/supabase/queries";
 import { HoursChart } from "@/components/hours-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,6 +83,11 @@ export default function WorkerDetailPage({
         startOfMonth(now),
         endOfMonth(now)
       ),
+  });
+
+  const { data: allEntries = [] } = useQuery({
+    queryKey: ["time-entries", id, "all"],
+    queryFn: () => getAllTimeEntriesForEmployee(supabase, id),
   });
 
   const totalWeekHours = weekEntries.reduce((acc, entry) => {
@@ -171,7 +177,7 @@ export default function WorkerDetailPage({
               </tr>
             </thead>
             <tbody>
-              {groupByDay(monthEntries).map((day) => (
+              {groupByDay(allEntries).map((day) => (
                 <tr key={day.date} className="border-b last:border-0">
                   <td className="px-6 py-3 font-medium whitespace-nowrap">
                     {format(new Date(day.date), "EEE, MMM d")}
@@ -202,13 +208,13 @@ export default function WorkerDetailPage({
                   </td>
                 </tr>
               ))}
-              {monthEntries.length === 0 && (
+              {allEntries.length === 0 && (
                 <tr>
                   <td
                     colSpan={3}
                     className="px-6 py-8 text-center text-muted-foreground"
                   >
-                    No entries this month.
+                    No entries yet.
                   </td>
                 </tr>
               )}

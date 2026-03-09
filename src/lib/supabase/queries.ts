@@ -109,6 +109,20 @@ export async function getTimeEntriesForEmployee(
   return data || [];
 }
 
+export async function getAllTimeEntriesForEmployee(
+  supabase: SupabaseClient,
+  employeeId: string
+): Promise<TimeEntry[]> {
+  const { data, error } = await supabase
+    .from("time_entries")
+    .select("*")
+    .eq("employee_id", employeeId)
+    .order("clock_in", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
 export async function getRecentTimeEntries(
   supabase: SupabaseClient,
   limit: number = 5
