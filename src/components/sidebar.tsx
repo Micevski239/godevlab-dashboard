@@ -13,6 +13,7 @@ import {
   Sparkles,
   BookmarkPlus,
   StickyNote,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/dashboard/content", label: "Content", icon: Layers },
   { href: "/dashboard/posts", label: "Posts", icon: BookmarkPlus },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
+  { href: "/dashboard/listings", label: "Listings", icon: FileText },
   { href: "/dashboard/add", label: "Add Event", icon: PlusCircle },
   { href: "/dashboard/add-promotion", label: "Add Promotion", icon: PlusCircle },
 ];
@@ -66,7 +68,7 @@ export function Sidebar({ employee }: SidebarProps) {
         {navItems.map((item) => {
           if (
             employee?.role === "worker" &&
-            (item.href === "/dashboard/content" || item.href === "/dashboard/posts" || item.href === "/dashboard/notes" || item.href === "/dashboard/add" || item.href === "/dashboard/add-promotion")
+            (item.href === "/dashboard/content" || item.href === "/dashboard/posts" || item.href === "/dashboard/notes" || item.href === "/dashboard/listings" || item.href === "/dashboard/add" || item.href === "/dashboard/add-promotion")
           ) {
             return null;
           }
