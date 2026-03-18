@@ -42,6 +42,124 @@ export interface Note {
   employee?: Employee;
 }
 
+export type GoDevLabProjectStatus =
+  | "backlog"
+  | "active"
+  | "review"
+  | "completed";
+
+export type GoDevLabProjectPriority = "low" | "medium" | "high";
+
+export type GoDevLabTaskStatus = "todo" | "in_progress" | "done";
+
+export type GoDevLabUpdateType = "progress" | "note" | "blocker" | "decision";
+
+export interface GoDevLabPost {
+  id: string;
+  url: string;
+  title: string;
+  description: string | null;
+  created_by: string;
+  created_at: string;
+  employee?: Employee;
+}
+
+export interface GoDevLabNote {
+  id: string;
+  title: string;
+  description: string;
+  created_by: string;
+  created_at: string;
+  employee?: Employee;
+}
+
+export interface GoDevLabProject {
+  id: string;
+  title: string;
+  description: string | null;
+  status: GoDevLabProjectStatus;
+  priority: GoDevLabProjectPriority;
+  due_date: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  employee?: Employee;
+}
+
+export interface GoDevLabProjectTask {
+  id: string;
+  project_id: string;
+  title: string;
+  details: string | null;
+  status: GoDevLabTaskStatus;
+  created_by: string;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+  employee?: Employee;
+}
+
+export interface GoDevLabProjectUpdate {
+  id: string;
+  project_id: string;
+  title: string;
+  details: string;
+  update_type: GoDevLabUpdateType;
+  created_by: string;
+  created_at: string;
+  employee?: Employee;
+}
+
+export type GoGevgelijaUpdateIdeaLane =
+  | "next-patch"
+  | "minor-release"
+  | "future-lab";
+
+export interface GoGevgelijaUpdatePhoto {
+  id: string;
+  update_id: string;
+  storage_path: string;
+  public_url: string;
+  file_name: string;
+  file_size: number | null;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface GoGevgelijaUpdateHighlight {
+  id: string;
+  update_id: string;
+  title: string;
+  details: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface GoGevgelijaUpdateIdea {
+  id: string;
+  update_id: string;
+  lane: GoGevgelijaUpdateIdeaLane;
+  title: string;
+  details: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface GoGevgelijaUpdateDraft {
+  id: string;
+  name: string;
+  version: string | null;
+  target_date: string | null;
+  summary: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  employee?: Employee;
+  photos?: GoGevgelijaUpdatePhoto[];
+  highlights?: GoGevgelijaUpdateHighlight[];
+  ideas?: GoGevgelijaUpdateIdea[];
+}
+
 // ============================================
 // Django API content types (read-only)
 // ============================================

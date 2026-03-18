@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { getWorkspaceFromPathname } from "@/lib/workspaces";
 
 interface CalendarDay {
   date: string;
@@ -42,6 +44,8 @@ const MONTH_NAMES = [
 ];
 
 export default function CalendarPage() {
+  const pathname = usePathname();
+  const workspace = getWorkspaceFromPathname(pathname);
   const [text, setText] = useState("");
   const [days, setDays] = useState<CalendarDay[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,6 +69,15 @@ export default function CalendarPage() {
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const isGoDevLab = workspace === "godevlab";
+  const pageTitle = isGoDevLab ? "Planning Calendar" : "Content Calendar";
+  const pageDescription = isGoDevLab
+    ? "Paste sprint goals, product ideas, or launch tasks and build a monthly plan"
+    : "Paste your ideas and AI will plan what to post each day";
+  const placeholder = isGoDevLab
+    ? "Paste sprint goals, release tasks, feature ideas, important dates, and team notes. AI will turn this into a month plan for the selected month."
+    : "Paste your content ideas, event info, themes, notes... AI will turn this into a daily posting plan for the selected month.";
+  const generateLabel = isGoDevLab ? "Generate Plan" : "Generate Calendar";
 
   const { firstDay, daysInMonth } = getMonthDays(viewYear, viewMonth);
 
@@ -127,9 +140,9 @@ export default function CalendarPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-1">Content Calendar</h1>
+      <h1 className="text-2xl font-bold mb-1">{pageTitle}</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Paste your ideas and AI will plan what to post each day
+        {pageDescription}
       </p>
 
       {/* Input section */}
@@ -137,7 +150,7 @@ export default function CalendarPage() {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Paste your content ideas, event info, themes, notes... AI will turn this into a daily posting plan for the selected month."
+          placeholder={placeholder}
           className="w-full h-40 border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-700/30 focus:border-brand-700"
         />
         <div className="flex items-center gap-3 mt-3">
@@ -151,7 +164,7 @@ export default function CalendarPage() {
             ) : (
               <Sparkles className="w-4 h-4 mr-2" />
             )}
-            {loading ? "Generating..." : "Generate Calendar"}
+            {loading ? "Generating..." : generateLabel}
           </Button>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import type { Employee, TimeEntry } from "@/types";
 import { cn } from "@/lib/utils";
+import { getWorkspaceBasePath } from "@/lib/workspaces";
 
 interface WorkerTableProps {
   employees: Employee[];
@@ -11,6 +13,9 @@ interface WorkerTableProps {
 }
 
 export function WorkerTable({ employees, todayEntries }: WorkerTableProps) {
+  const pathname = usePathname();
+  const basePath = getWorkspaceBasePath(pathname);
+
   const getEmployeeStatus = (employeeId: string) => {
     const entries = todayEntries.filter((e) => e.employee_id === employeeId);
     const active = entries.find((e) => !e.clock_out);
@@ -74,7 +79,7 @@ export function WorkerTable({ employees, todayEntries }: WorkerTableProps) {
               >
                 <td className="px-4 py-3">
                   <Link
-                    href={`/dashboard/workers/${emp.id}`}
+                    href={`${basePath}/workers/${emp.id}`}
                     className="text-sm font-medium hover:text-brand-700 transition-colors"
                   >
                     {emp.full_name}

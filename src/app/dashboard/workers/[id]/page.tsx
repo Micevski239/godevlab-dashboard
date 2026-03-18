@@ -1,6 +1,7 @@
 "use client";
 
 import { use } from "react";
+import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -14,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getWorkspaceBasePath } from "@/lib/workspaces";
 import {
   format,
   startOfWeek,
@@ -56,6 +58,8 @@ export default function WorkerDetailPage({
 }) {
   const { id } = use(params);
   const supabase = createClient();
+  const pathname = usePathname();
+  const basePath = getWorkspaceBasePath(pathname);
   const now = new Date();
 
   const { data: employee } = useQuery({
@@ -114,7 +118,7 @@ export default function WorkerDetailPage({
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/dashboard/workers">
+          <Link href={`${basePath}/workers`}>
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back
           </Link>
