@@ -1,12 +1,16 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, LogIn, LogOut } from "lucide-react";
 import { useClock } from "@/hooks/use-clock";
 import { useCurrentEmployee } from "@/hooks/use-employee";
+import { getWorkspaceFromPathname } from "@/lib/workspaces";
 
 export function ClockWidget() {
+  const pathname = usePathname();
+  const workspace = getWorkspaceFromPathname(pathname);
   const { data: employee } = useCurrentEmployee();
   const {
     isClockedIn,
@@ -16,7 +20,7 @@ export function ClockWidget() {
     isClockingIn,
     isClockingOut,
     isLoading,
-  } = useClock(employee?.id);
+  } = useClock(employee?.id, workspace);
 
   if (isLoading) {
     return (

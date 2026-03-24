@@ -5,16 +5,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getActiveTimeEntry, clockIn, clockOut } from "@/lib/supabase/queries";
 import type { TimeEntry } from "@/types";
+import type { DashboardWorkspace } from "@/lib/workspaces";
 
-export function useClock(employeeId: string | undefined) {
+export function useClock(
+  employeeId: string | undefined,
+  workspace: DashboardWorkspace
+) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const [elapsed, setElapsed] = useState(0);
 
   const { data: activeEntry, isLoading } = useQuery<TimeEntry | null>({
-    queryKey: ["active-entry", employeeId],
+    queryKey: ["active-entry", employeeId, workspace],
     queryFn: () =>
-      employeeId ? getActiveTimeEntry(supabase, employeeId) : null,
+      employeeId ? getActiveTimeEntry(supabase, employeeId, workspace) : null,
     enabled: !!employeeId,
     refetchInterval: 60000,
   });
@@ -36,18 +40,20 @@ export function useClock(employeeId: string | undefined) {
   }, [activeEntry]);
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["active-entry"] });
-    queryClient.invalidateQueries({ queryKey: ["today-entries"] });
-    queryClient.invalidateQueries({ queryKey: ["recent-entries"] });
+    queryClient.invalidateQueries({ queryKey: ["active-entry", employeeId, workspace] });
+    queryClient.invalidateQueries({ queryKey: ["today-entries", workspace] });
+    queryClient.invalidateQueries({ queryKey: ["recent-entries", workspace] });
+    queryClient.invalidateQueries({ queryKey: ["time-entries", workspace] });
   };
 
   const clockInMutation = useMutation({
-    mutationFn: () => clockIn(supabase, employeeId!),
+    mutationFn: () => clockIn(supabase, employeeId!, workspace),
     onSuccess: invalidate,
   });
 
   const clockOutMutation = useMutation({
-    mutationFn: (notes?: string) => clockOut(supabase, activeEntry!.id, notes),
+    mutationFn: (notes?: string) =>
+      clockOut(supabase, activeEntry!.id, workspace, notes),
     onSuccess: invalidate,
   });
 

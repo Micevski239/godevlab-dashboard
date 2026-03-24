@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Employee, TimeEntry, Post, Note } from "@/types";
 import { startOfDay, endOfDay } from "date-fns";
+import type { DashboardWorkspace } from "@/lib/workspaces";
 
 export async function getEmployees(
   supabase: SupabaseClient
@@ -30,12 +31,14 @@ export async function getEmployee(
 }
 
 export async function getTodayTimeEntries(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  workspace: DashboardWorkspace
 ): Promise<TimeEntry[]> {
   const today = new Date();
   const { data, error } = await supabase
     .from("time_entries")
     .select("*, employee:employees(*)")
+    .eq("workspace", workspace)
     .gte("clock_in", startOfDay(today).toISOString())
     .lte("clock_in", endOfDay(today).toISOString())
     .order("clock_in", { ascending: false });
@@ -46,12 +49,14 @@ export async function getTodayTimeEntries(
 
 export async function getActiveTimeEntry(
   supabase: SupabaseClient,
-  employeeId: string
+  employeeId: string,
+  workspace: DashboardWorkspace
 ): Promise<TimeEntry | null> {
   const { data, error } = await supabase
     .from("time_entries")
     .select("*")
     .eq("employee_id", employeeId)
+    .eq("workspace", workspace)
     .is("clock_out", null)
     .order("clock_in", { ascending: false })
     .limit(1)
@@ -63,11 +68,12 @@ export async function getActiveTimeEntry(
 
 export async function clockIn(
   supabase: SupabaseClient,
-  employeeId: string
+  employeeId: string,
+  workspace: DashboardWorkspace
 ): Promise<TimeEntry> {
   const { data, error } = await supabase
     .from("time_entries")
-    .insert({ employee_id: employeeId })
+    .insert({ employee_id: employeeId, workspace })
     .select()
     .single();
 
@@ -78,12 +84,14 @@ export async function clockIn(
 export async function clockOut(
   supabase: SupabaseClient,
   entryId: string,
+  workspace: DashboardWorkspace,
   notes?: string
 ): Promise<TimeEntry> {
   const { data, error } = await supabase
     .from("time_entries")
     .update({ clock_out: new Date().toISOString(), notes: notes || null })
     .eq("id", entryId)
+    .eq("workspace", workspace)
     .select()
     .single();
 
@@ -94,6 +102,7 @@ export async function clockOut(
 export async function getTimeEntriesForEmployee(
   supabase: SupabaseClient,
   employeeId: string,
+  workspace: DashboardWorkspace,
   from: Date,
   to: Date
 ): Promise<TimeEntry[]> {
@@ -101,6 +110,7 @@ export async function getTimeEntriesForEmployee(
     .from("time_entries")
     .select("*")
     .eq("employee_id", employeeId)
+    .eq("workspace", workspace)
     .gte("clock_in", from.toISOString())
     .lte("clock_in", to.toISOString())
     .order("clock_in", { ascending: false });
@@ -111,12 +121,14 @@ export async function getTimeEntriesForEmployee(
 
 export async function getAllTimeEntriesForEmployee(
   supabase: SupabaseClient,
-  employeeId: string
+  employeeId: string,
+  workspace: DashboardWorkspace
 ): Promise<TimeEntry[]> {
   const { data, error } = await supabase
     .from("time_entries")
     .select("*")
     .eq("employee_id", employeeId)
+    .eq("workspace", workspace)
     .order("clock_in", { ascending: false });
 
   if (error) throw error;
@@ -125,11 +137,13 @@ export async function getAllTimeEntriesForEmployee(
 
 export async function getRecentTimeEntries(
   supabase: SupabaseClient,
+  workspace: DashboardWorkspace,
   limit: number = 5
 ): Promise<TimeEntry[]> {
   const { data, error } = await supabase
     .from("time_entries")
     .select("*, employee:employees(*)")
+    .eq("workspace", workspace)
     .order("clock_in", { ascending: false })
     .limit(limit);
 

@@ -1,13 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getEmployees, getTodayTimeEntries } from "@/lib/supabase/queries";
 import { ClockWidget } from "@/components/clock-widget";
 import { WorkerTable } from "@/components/worker-table";
+import { getWorkspaceFromPathname } from "@/lib/workspaces";
 
 export default function WorkersPage() {
   const supabase = createClient();
+  const pathname = usePathname();
+  const workspace = getWorkspaceFromPathname(pathname);
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
@@ -15,8 +19,8 @@ export default function WorkersPage() {
   });
 
   const { data: todayEntries = [] } = useQuery({
-    queryKey: ["today-entries"],
-    queryFn: () => getTodayTimeEntries(supabase),
+    queryKey: ["today-entries", workspace],
+    queryFn: () => getTodayTimeEntries(supabase, workspace),
     refetchInterval: 30000,
   });
 

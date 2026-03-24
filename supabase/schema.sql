@@ -13,6 +13,8 @@ CREATE TABLE employees (
 CREATE TABLE time_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  workspace TEXT NOT NULL DEFAULT 'gogevgelija'
+    CHECK (workspace IN ('gogevgelija', 'godevlab')),
   clock_in TIMESTAMPTZ NOT NULL DEFAULT now(),
   clock_out TIMESTAMPTZ,
   notes TEXT,
@@ -21,7 +23,11 @@ CREATE TABLE time_entries (
 
 -- Index for fast employee lookups
 CREATE INDEX idx_time_entries_employee ON time_entries(employee_id);
+CREATE INDEX idx_time_entries_employee_workspace ON time_entries(employee_id, workspace);
 CREATE INDEX idx_time_entries_clock_in ON time_entries(clock_in DESC);
+CREATE UNIQUE INDEX idx_time_entries_active_workspace
+  ON time_entries(employee_id, workspace)
+  WHERE clock_out IS NULL;
 
 -- RLS: employees can read all employees, only admins can modify
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;

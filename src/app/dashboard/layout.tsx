@@ -9,13 +9,19 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) {
+  // Use getSession() instead of getUser() — the middleware already validated
+  // the session with getUser(). getSession() reads the JWT from the cookie
+  // locally (no network roundtrip), saving ~200-500ms.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.user) {
     redirect("/login");
   }
+
+  const user = session.user;
 
   let { data: employee } = await supabase
     .from("employees")

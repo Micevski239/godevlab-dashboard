@@ -22,14 +22,14 @@ export default function OverviewPage() {
   const supabase = createClient();
 
   const { data: todayEntries = [] } = useQuery({
-    queryKey: ["today-entries"],
-    queryFn: () => getTodayTimeEntries(supabase),
+    queryKey: ["today-entries", "gogevgelija"],
+    queryFn: () => getTodayTimeEntries(supabase, "gogevgelija"),
     refetchInterval: 30000,
   });
 
   const { data: recentEntries = [] } = useQuery({
-    queryKey: ["recent-entries"],
-    queryFn: () => getRecentTimeEntries(supabase, 5),
+    queryKey: ["recent-entries", "gogevgelija"],
+    queryFn: () => getRecentTimeEntries(supabase, "gogevgelija", 5),
   });
 
   const { data: events } = useQuery({

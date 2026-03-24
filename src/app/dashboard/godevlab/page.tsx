@@ -27,8 +27,8 @@ export default function GoDevLabOverviewPage() {
   const supabase = createClient();
 
   const { data: todayEntries = [] } = useQuery({
-    queryKey: ["today-entries"],
-    queryFn: () => getTodayTimeEntries(supabase),
+    queryKey: ["today-entries", "godevlab"],
+    queryFn: () => getTodayTimeEntries(supabase, "godevlab"),
     refetchInterval: 30000,
   });
 

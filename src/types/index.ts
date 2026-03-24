@@ -3,6 +3,7 @@
 // ============================================
 
 export type EmployeeRole = "admin" | "editor" | "worker";
+export type TimeEntryWorkspace = "gogevgelija" | "godevlab";
 
 export interface Employee {
   id: string;
@@ -17,6 +18,7 @@ export interface Employee {
 export interface TimeEntry {
   id: string;
   employee_id: string;
+  workspace: TimeEntryWorkspace;
   clock_in: string;
   clock_out: string | null;
   notes: string | null;

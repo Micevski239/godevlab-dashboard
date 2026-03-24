@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { getWorkspaceBasePath } from "@/lib/workspaces";
+import { getWorkspaceBasePath, getWorkspaceFromPathname } from "@/lib/workspaces";
 import {
   format,
   startOfWeek,
@@ -60,6 +60,7 @@ export default function WorkerDetailPage({
   const supabase = createClient();
   const pathname = usePathname();
   const basePath = getWorkspaceBasePath(pathname);
+  const workspace = getWorkspaceFromPathname(pathname);
   const now = new Date();
 
   const { data: employee } = useQuery({
@@ -68,30 +69,32 @@ export default function WorkerDetailPage({
   });
 
   const { data: weekEntries = [] } = useQuery({
-    queryKey: ["time-entries", id, "week"],
+    queryKey: ["time-entries", workspace, id, "week"],
     queryFn: () =>
       getTimeEntriesForEmployee(
         supabase,
         id,
+        workspace,
         startOfWeek(now, { weekStartsOn: 1 }),
         endOfWeek(now, { weekStartsOn: 1 })
       ),
   });
 
   const { data: monthEntries = [] } = useQuery({
-    queryKey: ["time-entries", id, "month"],
+    queryKey: ["time-entries", workspace, id, "month"],
     queryFn: () =>
       getTimeEntriesForEmployee(
         supabase,
         id,
+        workspace,
         startOfMonth(now),
         endOfMonth(now)
       ),
   });
 
   const { data: allEntries = [] } = useQuery({
-    queryKey: ["time-entries", id, "all"],
-    queryFn: () => getAllTimeEntriesForEmployee(supabase, id),
+    queryKey: ["time-entries", workspace, id, "all"],
+    queryFn: () => getAllTimeEntriesForEmployee(supabase, id, workspace),
   });
 
   const totalWeekHours = weekEntries.reduce((acc, entry) => {
