@@ -434,29 +434,10 @@ export default function AddContentPage() {
     const listingIds = selectedListing ? [selectedListing.id] : [];
     const categoryId = selectedListing?.category?.id ?? null;
 
-    const adminWindow = window.open(ADMIN_ADD_URL, "_blank");
+    const payload = JSON.stringify({ eventContent, listingIds, categoryId });
+    const encoded = btoa(encodeURIComponent(payload));
+    window.open(`${ADMIN_ADD_URL}#gg:${encoded}`, "_blank");
     setScriptCopied(true);
-
-    if (!adminWindow) return;
-
-    // Wait for the admin page to signal it's ready, then send the data
-    const handleMessage = (e: MessageEvent) => {
-      if (e.data?.type !== "DJANGO_ADMIN_READY") return;
-      adminWindow.postMessage(
-        { type: "GOGEVGELIJA_FILL", eventContent, listingIds, categoryId },
-        "https://admin.gogevgelija.com"
-      );
-      window.removeEventListener("message", handleMessage);
-      clearTimeout(timeout);
-    };
-
-    window.addEventListener("message", handleMessage);
-
-    // Cleanup after 30s if admin page never signals ready
-    const timeout = setTimeout(
-      () => window.removeEventListener("message", handleMessage),
-      30000
-    );
   };
 
   const uploadAndCompress = useCallback(async (files: FileList | null) => {
