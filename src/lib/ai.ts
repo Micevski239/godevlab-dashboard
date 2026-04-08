@@ -1,9 +1,9 @@
 import OpenAI from "openai";
 import type { EventContent, PromotionContent } from "@/types";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 const VALID_ICONS = [
   "musical-notes",
@@ -77,7 +77,7 @@ export async function processEventContent(
   platform: string,
   sourceUrl: string
 ): Promise<EventContent> {
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     messages: [
@@ -140,7 +140,7 @@ export async function processPromotionContent(
   platform: string,
   sourceUrl: string
 ): Promise<PromotionContent> {
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     messages: [
