@@ -23,6 +23,7 @@ import EventPreview from "@/components/EventPreview";
 import CopyField from "@/components/CopyField";
 import ImageGallery from "@/components/ImageGallery";
 import type { EventContent, ProcessingStep, DjangoListing } from "@/types";
+import type { AIProvider } from "@/lib/ai";
 import { ADMIN_ADD_URL } from "@/lib/admin-script";
 import { fetchAllListings } from "@/lib/django/services";
 
@@ -234,6 +235,7 @@ function ListingsSidebar({
 // ─── Main Page ───────────────────────────────────────────────────
 
 export default function AddContentPage() {
+  const [provider, setProvider] = useState<AIProvider>("openai");
   const [step, setStep] = useState<ProcessingStep>("idle");
   const [error, setError] = useState<string>();
   const [eventContent, setEventContent] = useState<EventContent | null>(null);
@@ -310,6 +312,7 @@ export default function AddContentPage() {
           images: scrapeData.images,
           platform: scrapeData.platform,
           sourceUrl: url,
+          provider,
         }),
       });
 
@@ -345,6 +348,7 @@ export default function AddContentPage() {
           images: [],
           platform: "manual",
           sourceUrl: "",
+          provider,
         }),
       });
 
@@ -512,6 +516,27 @@ export default function AddContentPage() {
                 <X className="w-3 h-3" />
               </button>
             </span>
+          </div>
+        )}
+
+        {/* AI Provider Toggle */}
+        {step === "idle" && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">AI</span>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm font-medium">
+              <button
+                onClick={() => setProvider("openai")}
+                className={`px-3 py-1.5 transition-colors ${provider === "openai" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:text-gray-700"}`}
+              >
+                OpenAI
+              </button>
+              <button
+                onClick={() => setProvider("groq")}
+                className={`px-3 py-1.5 transition-colors ${provider === "groq" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:text-gray-700"}`}
+              >
+                Groq
+              </button>
+            </div>
           </div>
         )}
 

@@ -1,8 +1,11 @@
 import OpenAI from "openai";
 import type { EventContent, PromotionContent } from "@/types";
 
-function getClient(): { client: OpenAI; model: string } {
-  if (process.env.AI_PROVIDER === "groq") {
+export type AIProvider = "openai" | "groq";
+
+function getClient(provider?: AIProvider): { client: OpenAI; model: string } {
+  const resolved = provider ?? (process.env.AI_PROVIDER as AIProvider) ?? "openai";
+  if (resolved === "groq") {
     return {
       client: new OpenAI({
         apiKey: process.env.GROQ_API_KEY,
@@ -87,9 +90,10 @@ Rules:
 export async function processEventContent(
   caption: string,
   platform: string,
-  sourceUrl: string
+  sourceUrl: string,
+  provider?: AIProvider
 ): Promise<EventContent> {
-  const { client, model } = getClient();
+  const { client, model } = getClient(provider);
   const response = await client.chat.completions.create({
     model,
     response_format: { type: "json_object" },
@@ -151,9 +155,10 @@ Rules:
 export async function processPromotionContent(
   caption: string,
   platform: string,
-  sourceUrl: string
+  sourceUrl: string,
+  provider?: AIProvider
 ): Promise<PromotionContent> {
-  const { client, model } = getClient();
+  const { client, model } = getClient(provider);
   const response = await client.chat.completions.create({
     model,
     response_format: { type: "json_object" },

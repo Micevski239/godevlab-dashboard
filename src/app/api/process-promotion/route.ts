@@ -3,7 +3,7 @@ import { processPromotionContent } from "@/lib/ai";
 
 export async function POST(request: NextRequest) {
   try {
-    const { caption, images, platform, sourceUrl } = await request.json();
+    const { caption, images, platform, sourceUrl, provider } = await request.json();
 
     if (!caption || typeof caption !== "string") {
       return NextResponse.json(
@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
     const result = await processPromotionContent(
       caption,
       platform || "unknown",
-      sourceUrl || ""
+      sourceUrl || "",
+      provider
     );
 
     // Attach images from scraping
