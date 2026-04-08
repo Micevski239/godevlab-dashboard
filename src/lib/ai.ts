@@ -1,8 +1,20 @@
 import OpenAI from "openai";
 import type { EventContent, PromotionContent } from "@/types";
 
-function getOpenAI() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getClient(): { client: OpenAI; model: string } {
+  if (process.env.AI_PROVIDER === "groq") {
+    return {
+      client: new OpenAI({
+        apiKey: process.env.GROQ_API_KEY,
+        baseURL: "https://api.groq.com/openai/v1",
+      }),
+      model: "llama-3.3-70b-versatile",
+    };
+  }
+  return {
+    client: new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+    model: "gpt-4o-mini",
+  };
 }
 
 const VALID_ICONS = [
@@ -77,8 +89,9 @@ export async function processEventContent(
   platform: string,
   sourceUrl: string
 ): Promise<EventContent> {
-  const response = await getOpenAI().chat.completions.create({
-    model: "gpt-4o-mini",
+  const { client, model } = getClient();
+  const response = await client.chat.completions.create({
+    model,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
@@ -140,8 +153,9 @@ export async function processPromotionContent(
   platform: string,
   sourceUrl: string
 ): Promise<PromotionContent> {
-  const response = await getOpenAI().chat.completions.create({
-    model: "gpt-4o-mini",
+  const { client, model } = getClient();
+  const response = await client.chat.completions.create({
+    model,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: PROMOTION_SYSTEM_PROMPT },

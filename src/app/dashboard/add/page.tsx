@@ -23,7 +23,7 @@ import EventPreview from "@/components/EventPreview";
 import CopyField from "@/components/CopyField";
 import ImageGallery from "@/components/ImageGallery";
 import type { EventContent, ProcessingStep, DjangoListing } from "@/types";
-import { generateFillScript, ADMIN_ADD_URL } from "@/lib/admin-script";
+import { ADMIN_ADD_URL } from "@/lib/admin-script";
 import { fetchAllListings } from "@/lib/django/services";
 
 interface CompressedImageData {
@@ -425,14 +425,34 @@ export default function AddContentPage() {
     setTimeout(() => setAllCopied(false), 2000);
   };
 
-  const fillDjangoAdmin = async () => {
+  const fillDjangoAdmin = () => {
     if (!eventContent) return;
     const listingIds = selectedListing ? [selectedListing.id] : [];
     const categoryId = selectedListing?.category?.id ?? null;
-    const script = generateFillScript(eventContent, listingIds, categoryId);
-    await navigator.clipboard.writeText(script);
+
+    const adminWindow = window.open(ADMIN_ADD_URL, "_blank");
     setScriptCopied(true);
-    window.open(ADMIN_ADD_URL, "_blank");
+
+    if (!adminWindow) return;
+
+    // Wait for the admin page to signal it's ready, then send the data
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type !== "DJANGO_ADMIN_READY") return;
+      adminWindow.postMessage(
+        { type: "GOGEVGELIJA_FILL", eventContent, listingIds, categoryId },
+        "https://admin.gogevgelija.com"
+      );
+      window.removeEventListener("message", handleMessage);
+      clearTimeout(timeout);
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    // Cleanup after 30s if admin page never signals ready
+    const timeout = setTimeout(
+      () => window.removeEventListener("message", handleMessage),
+      30000
+    );
   };
 
   const uploadAndCompress = useCallback(async (files: FileList | null) => {
@@ -566,22 +586,7 @@ export default function AddContentPage() {
             {scriptCopied && (
               <div className="bg-gray-900 text-gray-100 rounded-lg px-4 py-3 text-sm">
                 <p className="font-medium">
-                  Script copied! Admin page opened in new tab.
-                </p>
-                <p className="text-gray-400 mt-1">
-                  Press{" "}
-                  <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-xs">
-                    Cmd+Option+J
-                  </kbd>{" "}
-                  to open console, then{" "}
-                  <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-xs">
-                    Cmd+V
-                  </kbd>{" "}
-                  to paste and{" "}
-                  <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-xs">
-                    Enter
-                  </kbd>{" "}
-                  to run.
+                  Admin page opened — fields will fill automatically.
                 </p>
                 {selectedListing && (
                   <p className="text-gray-400 mt-1">
