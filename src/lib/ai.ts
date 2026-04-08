@@ -1,8 +1,8 @@
-import Groq from "groq-sdk";
+import OpenAI from "openai";
 import type { EventContent, PromotionContent } from "@/types";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 const VALID_ICONS = [
@@ -77,8 +77,8 @@ export async function processEventContent(
   platform: string,
   sourceUrl: string
 ): Promise<EventContent> {
-  const response = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
@@ -140,8 +140,8 @@ export async function processPromotionContent(
   platform: string,
   sourceUrl: string
 ): Promise<PromotionContent> {
-  const response = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: PROMOTION_SYSTEM_PROMPT },

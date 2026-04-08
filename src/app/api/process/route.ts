@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { processEventContent } from "@/lib/groq";
+import { processEventContent } from "@/lib/ai";
 
 export async function POST(request: NextRequest) {
   try {

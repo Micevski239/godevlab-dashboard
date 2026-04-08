@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import Groq from "groq-sdk";
+import OpenAI from "openai";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 const SYSTEM_PROMPT = `You are a social media content calendar planner for GoGevgelija, a tourism app for Gevgelija, North Macedonia.
@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
